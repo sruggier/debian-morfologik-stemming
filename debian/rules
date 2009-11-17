@@ -1,0 +1,27 @@
+#!/usr/bin/make -f
+include /usr/share/cdbs/1/rules/debhelper.mk
+include /usr/share/cdbs/1/rules/patchsys-quilt.mk
+include /usr/share/cdbs/1/class/ant.mk
+
+JAVA_HOME := /usr/lib/jvm/java-6-openjdk
+DEB_JARS := commons-cli junit4
+DEB_INSTALL_CHANGELOGS_ALL := CHANGES
+
+install/libmorfologik-stemming-java::
+	install -m 644 -D tmp/bin/morfologik-stemming-nodict-$(DEB_UPSTREAM_VERSION).jar \
+		$(CURDIR)/debian/$(cdbs_curpkg)/usr/share/java/morfologik-stemming-nodict-$(DEB_UPSTREAM_VERSION).jar
+	dh_link -p$(cdbs_curpkg) usr/share/java/morfologik-stemming-nodict-$(DEB_UPSTREAM_VERSION).jar \
+		usr/share/java/morfologik-stemming-nodict.jar
+
+get-orig-source:
+	uscan --upstream-version $(DEB_UPSTREAM_VERSION) --force-download --destdir . && \
+	unzip $(DEB_SOURCE_PACKAGE)-$(DEB_UPSTREAM_VERSION)-src.zip \
+		-d $(DEB_SOURCE_PACKAGE)-$(DEB_UPSTREAM_VERSION) && \
+	rm -rf $(DEB_SOURCE_PACKAGE)-$(DEB_UPSTREAM_VERSION)/lib && \
+	rm -rf $(DEB_SOURCE_PACKAGE)-$(DEB_UPSTREAM_VERSION)/src-test && \
+	rm -rf $(DEB_SOURCE_PACKAGE)-$(DEB_UPSTREAM_VERSION)/src/res && \
+	rm -rf $(DEB_SOURCE_PACKAGE)-$(DEB_UPSTREAM_VERSION)/src/morfologik/dictionaries && \
+	GZIP=--best tar czf $(DEB_SOURCE_PACKAGE)_$(DEB_UPSTREAM_VERSION).orig.tar.gz \
+		$(DEB_SOURCE_PACKAGE)-$(DEB_UPSTREAM_VERSION) && \
+	rm -rf $(DEB_SOURCE_PACKAGE)-$(DEB_UPSTREAM_VERSION) \
+		$(DEB_SOURCE_PACKAGE)-$(DEB_UPSTREAM_VERSION)-src.zip

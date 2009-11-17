@@ -1,0 +1,5 @@
+morfologik-stemming (1.2.2-1) unstable; urgency=low
+
+  * Initial release. (Closes: #533882)
+
+ -- Rail Aliev <rail@i-rs.ru>  Tue, 17 Nov 2009 10:00:40 +0300

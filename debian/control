@@ -1,0 +1,19 @@
+Source: morfologik-stemming
+Section: java
+Priority: optional
+Maintainer: Rail Aliev <rail@i-rs.ru>
+Build-Depends: cdbs, debhelper (>= 5), ant, quilt
+Build-Depends-Indep: openjdk-6-jdk, locales, libcommons-cli-java, junit4
+Standards-Version: 3.8.3
+Vcs-Bzr: http://bzr.debian.org/users/rail-guest/morfologik-stemming/
+Vcs-Browser: http://bzr.debian.org/loggerhead/users/rail-guest/morfologik-stemming
+Homepage: http://sourceforge.net/projects/morfologik
+
+Package: libmorfologik-stemming-java
+Architecture: all
+Depends: ${misc:Depends}
+Description: Finite state automaton and stemming engine library
+ Java based morfologik-stemming library provides the following fatures:
+   - Finite state automaton traversal routines for Jan Daciuk's FSA package.
+   - A stemming engine for the Polish language built on top of FSA traversal.
+ The library may be used for other languages as well.
