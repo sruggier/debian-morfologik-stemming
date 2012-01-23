@@ -3,7 +3,7 @@ include /usr/share/cdbs/1/rules/debhelper.mk
 include /usr/share/cdbs/1/rules/patchsys-quilt.mk
 include /usr/share/cdbs/1/class/ant.mk
 
-JAVA_HOME := /usr/lib/jvm/java-6-openjdk
+JAVA_HOME := /usr/lib/jvm/default-java
 DEB_JARS := commons-cli junit4
 DEB_INSTALL_CHANGELOGS_ALL := CHANGES
 

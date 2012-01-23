@@ -3,7 +3,7 @@ Section: java
 Priority: optional
 Maintainer: Rail Aliev <rail@i-rs.ru>
 Build-Depends: cdbs, debhelper (>= 5), ant, quilt
-Build-Depends-Indep: openjdk-6-jdk, locales, libcommons-cli-java, junit4
+Build-Depends-Indep: default-jdk, locales, libcommons-cli-java, junit4
 Standards-Version: 3.8.3
 Vcs-Bzr: http://bzr.debian.org/users/rail-guest/morfologik-stemming/
 Vcs-Browser: http://bzr.debian.org/loggerhead/users/rail-guest/morfologik-stemming

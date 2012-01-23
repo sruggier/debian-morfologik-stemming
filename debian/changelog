@@ -1,3 +1,13 @@
+morfologik-stemming (1.2.2-1.1) unstable; urgency=low
+
+  * Non-maintainer upload.
+  * debian/control
+    - set "Build-Depends: default-jdk"
+  * debian/rules
+    - use /usr/lib/jvm/default-java as JAVA_HOME (Closes: #642754)
+
+ -- Hideki Yamane <henrich@debian.org>  Tue, 24 Jan 2012 03:25:42 +0900
+
 morfologik-stemming (1.2.2-1) unstable; urgency=low
 
   * Initial release. (Closes: #533882)
