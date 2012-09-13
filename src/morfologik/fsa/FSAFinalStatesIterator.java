@@ -1,14 +1,11 @@
 package morfologik.fsa;
 
 import java.nio.ByteBuffer;
-import java.util.Iterator;
-import java.util.NoSuchElementException;
-
-import morfologik.util.Arrays;
+import java.util.*;
 
 /**
- * An iterator that traverses all final states reachable from a given
- * node and returns byte sequences corresponding to final states.
+ * An iterator that traverses the right language of a given node (all sequences
+ * reachable from a given node).
  */
 public final class FSAFinalStatesIterator implements Iterator<ByteBuffer> {
     /**
@@ -32,129 +29,126 @@ public final class FSAFinalStatesIterator implements Iterator<ByteBuffer> {
     /** Reusable byte buffer wrapper around {@link #buffer}. */
     private ByteBuffer bufferWrapper = ByteBuffer.wrap(buffer);
 
-    /** A node stack for DFS when processing the automaton. */
-    private int [] nodes = new int [EXPECTED_MAX_STATES];
-
     /** An arc stack for DFS when processing the automaton. */
-    private int [] arcs = new int [EXPECTED_MAX_STATES];
+    private int[] arcs = new int[EXPECTED_MAX_STATES];
 
-    /** Current processing depth in {@link #nodes} and {@link #arcs}. */
+    /** Current processing depth in {@link #arcs}. */
     private int position;
 
     /**
      * Create an instance of the iterator for a given node.
      */
-    FSAFinalStatesIterator(FSA fsa, int node) {
-	this.fsa = fsa;
+    public FSAFinalStatesIterator(FSA fsa, int node) {
+        this.fsa = fsa;
 
-	if (fsa.getFirstArc(node) != 0) {
-	    restartFrom(node);
-	}
+        if (fsa.getFirstArc(node) != 0) {
+            restartFrom(node);
+        }
     }
 
     /**
-     * Restart walking from <code>node</code>.
+     * Restart walking from <code>node</code>. Allows iterator reuse.
      */
     public void restartFrom(int node) {
-	position = 0;
-	bufferWrapper.clear();
-	nextElement = null;
+        position = 0;
+        bufferWrapper.clear();
+        nextElement = null;
 
-	pushNode(node);
+        pushNode(node);
     }
-    
-    /** Returns <code>true</code> if there are still elements in this iterator. */
-    public boolean hasNext() {
-	if (nextElement == null) {
-	    nextElement = advance();
-	}
 
-	return nextElement != null;
+    /** Returns <code>true</code> if there are still elements in this iterator. */
+    @Override
+    public boolean hasNext() {
+        if (nextElement == null) {
+            nextElement = advance();
+        }
+
+        return nextElement != null;
     }
 
     /**
-     * @return Returns a {@link ByteBuffer} with the sequence corresponding
-     * to the next final state in the automaton.
+     * @return Returns a {@link ByteBuffer} with the sequence corresponding to
+     *         the next final state in the automaton.
      */
+    @Override
     public ByteBuffer next() {
-	if (nextElement != null) {
-	    final ByteBuffer cache = nextElement;
-	    nextElement = null;
-	    return cache;
-	} else {
-	    final ByteBuffer cache = advance();
-	    if (cache == null) {
-		throw new NoSuchElementException();
-	    }
-	    return cache;
-	}
+        if (nextElement != null) {
+            final ByteBuffer cache = nextElement;
+            nextElement = null;
+            return cache;
+        } else {
+            final ByteBuffer cache = advance();
+            if (cache == null) {
+                throw new NoSuchElementException();
+            }
+            return cache;
+        }
     }
 
     /**
      * Advances to the next available final state.
      */
     private final ByteBuffer advance() {
-	if (position == 0) {
-	    return null;
-	}
+        if (position == 0) {
+            return null;
+        }
 
-	while (position > 0) {
-	    final int lastIndex = position - 1;
-	    final int arc = arcs[lastIndex];
-	    final int node = nodes[lastIndex];
+        while (position > 0) {
+            final int lastIndex = position - 1;
+            final int arc = arcs[lastIndex];
 
-	    if (arc == 0) {
-		// Remove the current node from the queue.
-		position--;
-		continue;
-	    }
+            if (arc == 0) {
+                // Remove the current node from the queue.
+                position--;
+                continue;
+            }
 
-	    // Go to the next arc, but leave it on the stack
-	    // so that we keep the recursion depth level accurate.
-	    arcs[lastIndex] = fsa.getNextArc(node, arc);
+            // Go to the next arc, but leave it on the stack
+            // so that we keep the recursion depth level accurate.
+            arcs[lastIndex] = fsa.getNextArc(arc);
 
-	    // Expand buffer if needed.
-	    final int bufferLength = this.buffer.length;
-	    if (lastIndex >= bufferLength) {
-		this.buffer = Arrays.copyOf(buffer, bufferLength + EXPECTED_MAX_STATES);
-		this.bufferWrapper = ByteBuffer.wrap(buffer);
-	    }
-	    buffer[lastIndex] = fsa.getArcLabel(arc);
+            // Expand buffer if needed.
+            final int bufferLength = this.buffer.length;
+            if (lastIndex >= bufferLength) {
+                this.buffer = Arrays.copyOf(buffer, bufferLength
+                        + EXPECTED_MAX_STATES);
+                this.bufferWrapper = ByteBuffer.wrap(buffer);
+            }
+            buffer[lastIndex] = fsa.getArcLabel(arc);
 
-	    if (!fsa.isArcTerminal(arc)) {
-		// Recursively descend into the arc's node.
-		pushNode(fsa.getEndNode(arc));
-	    }
+            if (!fsa.isArcTerminal(arc)) {
+                // Recursively descend into the arc's node.
+                pushNode(fsa.getEndNode(arc));
+            }
 
-	    if (fsa.isArcFinal(arc)) {
-		bufferWrapper.clear();
-		bufferWrapper.limit(lastIndex + 1);
-		return bufferWrapper;
-	    }
-	}
+            if (fsa.isArcFinal(arc)) {
+                bufferWrapper.clear();
+                bufferWrapper.limit(lastIndex + 1);
+                return bufferWrapper;
+            }
+        }
 
-	return null;
+        return null;
     }
 
     /**
      * Not implemented in this iterator.
      */
-    public final void remove() {
-	throw new UnsupportedOperationException("Read-only iterator.");
+    @Override
+    public void remove() {
+        throw new UnsupportedOperationException("Read-only iterator.");
     }
 
     /**
      * Descends to a given node, adds its arcs to the stack to be traversed.
      */
     private void pushNode(int node) {
-	// Expand buffers if needed.
-	if (position == arcs.length) {
-	    nodes = Arrays.copyOf(nodes, nodes.length + EXPECTED_MAX_STATES);
-	    arcs = Arrays.copyOf(arcs, arcs.length + EXPECTED_MAX_STATES);
-	}
+        // Expand buffers if needed.
+        if (position == arcs.length) {
+            arcs = Arrays.copyOf(arcs, arcs.length + EXPECTED_MAX_STATES);
+        }
 
-	nodes[position] = node;
-	arcs[position] = fsa.getFirstArc(node);
-	position++;
+        arcs[position++] = fsa.getFirstArc(node);
     }
 }
