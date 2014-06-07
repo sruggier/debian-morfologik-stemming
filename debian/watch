@@ -1,2 +1,3 @@
 version=3
-http://sf.net/morfologik/morfologik-stemming-(.+)-src\.zip
+opts=dversionmangle=s/\+dfsg.*$// \
+    https://github.com/morfologik/morfologik-stemming/releases .*/archive/(.*)\.tar\.gz
