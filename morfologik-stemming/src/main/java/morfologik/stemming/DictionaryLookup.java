@@ -8,37 +8,26 @@ import java.nio.charset.CharsetDecoder;
 import java.nio.charset.CharsetEncoder;
 import java.util.Arrays;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
+import morfologik.fsa.ByteSequenceIterator;
 import morfologik.fsa.FSA;
-import morfologik.fsa.FSAFinalStatesIterator;
 import morfologik.fsa.FSATraversal;
 import morfologik.fsa.MatchResult;
-import morfologik.util.BufferUtils;
 
 /**
- * This class implements a dictionary lookup over an FSA dictionary. The
- * dictionary for this class should be prepared from a text file using Jan
- * Daciuk's FSA package (see link below).
- * 
- * <p>
- * <b>Important:</b> finite state automatons in Jan Daciuk's implementation use
- * <em>bytes</em> not unicode characters. Therefore objects of this class always
- * have to be constructed with an encoding used to convert Java strings to byte
- * arrays and the other way around. You <b>can</b> use UTF-8 encoding, as it
- * should not conflict with any control sequences and separator characters.
- * 
- * @see <a href="http://www.eti.pg.gda.pl/~jandac/fsa.html">FSA package Web
- *      site</a>
+ * This class implements a dictionary lookup of an inflected word over a
+ * dictionary previously compiled using the 
+ * <code>dict_compile</code> tool.
  */
 public final class DictionaryLookup implements IStemmer, Iterable<WordData> {
-  private static final int REMOVE_EVERYTHING = 255;
-
   /** An FSA used for lookups. */
   private final FSATraversal matcher;
 
   /** An iterator for walking along the final states of {@link #fsa}. */
-  private final FSAFinalStatesIterator finalStatesIterator;
+  private final ByteSequenceIterator finalStatesIterator;
 
   /** FSA's root node. */
   private final int rootNode;
@@ -102,11 +91,13 @@ public final class DictionaryLookup implements IStemmer, Iterable<WordData> {
    */
   private final Dictionary dictionary;
 
+  private final ISequenceEncoder sequenceEncoder;
+
   /**
-   * <p>
    * Creates a new object of this class using the given FSA for word lookups
    * and encoding for converting characters to bytes.
    * 
+   * @param dictionary The dictionary to use for lookups.
    * @throws IllegalArgumentException
    *             if FSA's root node cannot be acquired (dictionary is empty).
    */
@@ -114,15 +105,11 @@ public final class DictionaryLookup implements IStemmer, Iterable<WordData> {
       throws IllegalArgumentException {
     this.dictionary = dictionary;
     this.dictionaryMetadata = dictionary.metadata;
+    this.sequenceEncoder = dictionary.metadata.getSequenceEncoderType().get();
     this.rootNode = dictionary.fsa.getRootNode();
     this.fsa = dictionary.fsa;
     this.matcher = new FSATraversal(fsa);
-    this.finalStatesIterator = new FSAFinalStatesIterator(fsa, fsa.getRootNode());
-
-    if (rootNode == 0) {
-      throw new IllegalArgumentException(
-          "Dictionary must have at least the root node.");
-    }
+    this.finalStatesIterator = new ByteSequenceIterator(fsa, fsa.getRootNode());
 
     if (dictionaryMetadata == null) {
       throw new IllegalArgumentException(
@@ -142,25 +129,33 @@ public final class DictionaryLookup implements IStemmer, Iterable<WordData> {
   @Override
   public List<WordData> lookup(CharSequence word) {
     final byte separator = dictionaryMetadata.getSeparator();
+    final int prefixBytes = sequenceEncoder.prefixBytes();
 
     if (!dictionaryMetadata.getInputConversionPairs().isEmpty()) {
-      word = Dictionary.convertText(word, dictionaryMetadata.getInputConversionPairs());
+      word = applyReplacements(word, dictionaryMetadata.getInputConversionPairs());
     }
 
     // Reset the output list to zero length.
     formsList.wrap(forms, 0, 0);
 
     // Encode word characters into bytes in the same encoding as the FSA's.
-    charBuffer.clear();
-    charBuffer = BufferUtils.ensureCapacity(charBuffer, word.length());
+    charBuffer = BufferUtils.clearAndEnsureCapacity(charBuffer, word.length());
     for (int i = 0; i < word.length(); i++) {
       char chr = word.charAt(i);
-      if (chr == separatorChar)
+      if (chr == separatorChar) {
+        // No valid input can contain the separator.
         return formsList;
+      }
       charBuffer.put(chr);
     }
     charBuffer.flip();
-    byteBuffer = charsToBytes(charBuffer, byteBuffer);
+    try {
+      byteBuffer = BufferUtils.charsToBytes(encoder, charBuffer, byteBuffer);
+    } catch (UnmappableInputException e) {
+      // This should be a rare occurrence, but if it happens it means there is no way
+      // the dictionary can contain the input word.
+      return formsList;
+    }
 
     // Try to find a partial match in the dictionary.
     final MatchResult match = matcher.match(matchResult, byteBuffer
@@ -200,33 +195,30 @@ public final class DictionaryLookup implements IStemmer, Iterable<WordData> {
            * the base form.
            */
           final WordData wordData = forms[formsCount++];
-          wordData.reset();
-
-          wordData.wordBuffer = byteBuffer;
           if (dictionaryMetadata.getOutputConversionPairs().isEmpty()) {
-            wordData.wordCharSequence = word;
+            wordData.update(byteBuffer, word);
           } else {
-            wordData.wordCharSequence = Dictionary.convertText(word,
-                dictionaryMetadata.getOutputConversionPairs());
+            wordData.update(byteBuffer, applyReplacements(word, dictionaryMetadata.getOutputConversionPairs()));
           }
 
           /*
            * Find the separator byte's position splitting the inflection instructions
            * from the tag.
            */
+          assert prefixBytes <= bbSize : sequenceEncoder.getClass() + " >? " + bbSize;
           int sepPos;
-          for (sepPos = 0; sepPos < bbSize; sepPos++) {
-            if (ba[sepPos] == separator)
+          for (sepPos = prefixBytes; sepPos < bbSize; sepPos++) {
+            if (ba[sepPos] == separator) {
               break;
+            }
           }
 
           /*
            * Decode the stem into stem buffer.
            */
-          wordData.stemBuffer.clear();
-          wordData.stemBuffer = decodeBaseForm(wordData.stemBuffer, ba,
-              sepPos, byteBuffer, dictionaryMetadata);
-          wordData.stemBuffer.flip();
+          wordData.stemBuffer = sequenceEncoder.decode(wordData.stemBuffer,
+                                                   byteBuffer,
+                                                   ByteBuffer.wrap(ba, 0, sepPos));
 
           // Skip separator character.
           sepPos++;
@@ -236,9 +228,7 @@ public final class DictionaryLookup implements IStemmer, Iterable<WordData> {
            */
           final int tagSize = bbSize - sepPos;
           if (tagSize > 0) {
-            wordData.tagBuffer = BufferUtils.ensureCapacity(
-                wordData.tagBuffer, tagSize);
-            wordData.tagBuffer.clear();
+            wordData.tagBuffer = BufferUtils.clearAndEnsureCapacity(wordData.tagBuffer, tagSize);
             wordData.tagBuffer.put(ba, sepPos, tagSize);
             wordData.tagBuffer.flip();
           }
@@ -257,122 +247,27 @@ public final class DictionaryLookup implements IStemmer, Iterable<WordData> {
   }
 
   /**
-   * Decode the base form of an inflected word and save its decoded form into
-   * a byte buffer.
+   * Apply partial string replacements from a given map.
    * 
-   * @param output
-   *            The byte buffer to save the result to. A new buffer may be
-   *            allocated if the capacity of <code>bb</code> is not large
-   *            enough to store the result. The buffer is not flipped upon
-   *            return.
+   * Useful if the word needs to be normalized somehow (i.e., ligatures,
+   * apostrophes and such).
    * 
-   * @param inflectedForm
-   *            Inflected form's bytes (decoded properly).
-   * 
-   * @param encoded
-   *            Bytes of the encoded base form, starting at 0 index.
-   * 
-   * @param encodedLen
-   *            Length of the encode base form.
-   * 
-   * @return Returns either <code>bb</code> or a new buffer whose capacity is
-   *         large enough to store the output of the decoded data.
+   * @param word The word to apply replacements to.
+   * @param replacements A map of replacements (from-&gt;to).
+   * @return Returns a new string with all replacements applied.
    */
-  public static ByteBuffer decodeBaseForm(
-      ByteBuffer output,
-      byte[] encoded,
-      int encodedLen,
-      ByteBuffer inflectedForm,
-      DictionaryMetadata metadata) {
-    
-    // FIXME: We should eventually get rid of this method and use 
-    // each encoder's #decode method. The problem is that we'd have to include
-    // HPPC or roundtrip via HPPC to a ByteBuffer, which would slow things down.
-    // Since this is performance-crucial routine, I leave it for now.
-              
-    // Prepare the buffer.
-    output.clear();
-
-    assert inflectedForm.position() == 0;
-
-    // Increase buffer size (overallocating), if needed.
-    final byte[] src = inflectedForm.array();
-    final int srcLen = inflectedForm.remaining();
-    if (output.capacity() < srcLen + encodedLen) {
-      output = ByteBuffer.allocate(srcLen + encodedLen);
-    }
-
-    switch (metadata.getEncoderType()) {
-    case SUFFIX:
-      int suffixTrimCode = encoded[0];
-      int truncateBytes = suffixTrimCode - 'A' & 0xFF;
-      if (truncateBytes == REMOVE_EVERYTHING) {
-        truncateBytes = srcLen;
+  public static String applyReplacements(CharSequence word, LinkedHashMap<String, String> replacements) {
+    // quite horrible from performance point of view; this should really be a transducer.
+    StringBuilder sb = new StringBuilder(word);
+    for (final Map.Entry<String, String> e : replacements.entrySet()) {
+      String key = e.getKey();
+      int index = sb.indexOf(e.getKey());
+      while (index != -1) {
+        sb.replace(index, index + key.length(), e.getValue());
+        index = sb.indexOf(key, index + key.length());
       }
-      output.put(src, 0, srcLen - truncateBytes);
-      output.put(encoded, 1, encodedLen - 1);
-      break;
-
-    case PREFIX:
-      int truncatePrefixBytes = encoded[0] - 'A' & 0xFF;
-      int truncateSuffixBytes = encoded[1] - 'A' & 0xFF;
-      if (truncatePrefixBytes == REMOVE_EVERYTHING ||
-          truncateSuffixBytes == REMOVE_EVERYTHING) {
-        truncatePrefixBytes = srcLen;
-        truncateSuffixBytes = 0;
-      }
-      output.put(src, truncatePrefixBytes, srcLen - (truncateSuffixBytes + truncatePrefixBytes));
-      output.put(encoded, 2, encodedLen - 2);
-      break;
-
-    case INFIX:
-      int infixIndex  = encoded[0] - 'A' & 0xFF;
-      int infixLength = encoded[1] - 'A' & 0xFF;
-      truncateSuffixBytes = encoded[2] - 'A' & 0xFF;
-      if (infixLength == REMOVE_EVERYTHING ||
-          truncateSuffixBytes == REMOVE_EVERYTHING) {
-        infixIndex = 0;
-        infixLength = srcLen;
-        truncateSuffixBytes = 0;
-      }
-      output.put(src, 0, infixIndex);
-      output.put(src, infixIndex + infixLength, srcLen - (infixIndex + infixLength + truncateSuffixBytes));
-      output.put(encoded, 3, encodedLen - 3);
-      break;
-
-    case NONE:
-      output.put(encoded, 0, encodedLen);
-      break;
-
-    default:
-      throw new RuntimeException("Unhandled switch/case: " + metadata.getEncoderType());
     }
-
-    return output;
-  }
-
-  /**
-   * Encode a character sequence into a byte buffer, optionally expanding
-   * buffer.
-   */
-  private ByteBuffer charsToBytes(CharBuffer chars, ByteBuffer bytes) {
-    bytes.clear();
-    final int maxCapacity = (int) (chars.remaining() * encoder
-        .maxBytesPerChar());
-    if (bytes.capacity() <= maxCapacity) {
-      bytes = ByteBuffer.allocate(maxCapacity);
-    }
-
-    chars.mark();
-    encoder.reset();
-    if (encoder.encode(chars, bytes, true).isError()) {
-      // remove everything, we don't want to accept malformed input
-      bytes.clear();
-    }
-    bytes.flip();
-    chars.reset();
-
-    return bytes;
+    return sb.toString();
   }
 
   /**

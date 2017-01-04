@@ -10,7 +10,7 @@ import java.util.List;
 
 import morfologik.stemming.Dictionary;
 
-import org.fest.assertions.api.Assertions;
+import org.assertj.core.api.Assertions;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
@@ -46,6 +46,14 @@ public class SpellerTest {
     assertTrue(spell1.replaceRunOnWords("Rzekunia").isEmpty());
     assertTrue(spell1.replaceRunOnWords("RzekuniaRzeczypospolitej").contains("Rzekunia Rzeczypospolitej"));
     assertTrue(spell1.replaceRunOnWords("RzekuniaRze").isEmpty()); //Rze is not found but is a prefix
+
+    final URL url2 = getClass().getResource("single-char-word.dict");
+    final Speller spell2 = new Speller(Dictionary.read(url2));
+    assertTrue(spell2.replaceRunOnWords("alot").contains("a lot"));
+    assertTrue(spell2.replaceRunOnWords("aalot").contains("aa lot"));
+    assertTrue(spell2.replaceRunOnWords("aamusement").contains("a amusement"));
+    assertTrue(spell2.replaceRunOnWords("clot").isEmpty());
+    assertTrue(spell2.replaceRunOnWords("foobar").isEmpty());
   }
 
   @Test
@@ -158,6 +166,18 @@ public class SpellerTest {
   }
 
   @Test
+  public void testConcurrentReplacements() throws IOException {
+    final URL url = getClass().getResource("dict-with-freq.dict");
+    final Speller spell = new Speller(Dictionary.read(url));
+    //only the longest key is selected in replacement pairs
+    List<String> reps = spell.getAllReplacements("teached", 0, 0);
+    assertTrue(reps.contains("teached"));
+    assertTrue(reps.contains("taught"));
+    assertTrue(!reps.contains("tgheached"));
+  }
+  
+
+  @Test
   public void testIsMisspelled() throws IOException {
     final URL url = getClass().getResource("test-utf-spell.dict");
     final Speller spell = new Speller(Dictionary.read(url));
@@ -237,12 +257,79 @@ public class SpellerTest {
     assertTrue(getCutOffDistance(spell2, "reporter", "reporter") == 0);
   }
 
+  @Test
+  public void testReplacementsAndDistance2() throws Exception {
+    /*File infoFile = new File("/tmp/morfologik.info");
+    FileWriter fw1 = new FileWriter(infoFile);
+    fw1.write("fsa.dict.separator=+\n");
+    fw1.write("fsa.dict.encoding=utf-8\n");
+    fw1.write("fsa.dict.speller.replacement-pairs=s ss,t d,R Rh,y ij,ę em,em ę\n");
+    fw1.close();
+
+    File inputFile = new File("/tmp/morfologik.txt");
+    FileWriter fw2 = new FileWriter(inputFile);
+    fw2.write("Mitmuss\n");
+    fw2.write("Rhythmus\n");
+    fw2.write("Wald\n");
+    fw2.write("Band\n");
+    fw2.write("ijo\n");
+    fw2.write("ijond\n");
+    fw2.write("youd\n");
+    fw2.write("ijoussud\n");
+    fw2.write("ijoussuud\n");
+    fw2.write("ijussuud\n");
+    fw2.write("ijousod\n");
+    fw2.write("ij\n");
+    fw2.write("ijo\n");
+    fw2.write("Ciarkę\n");
+    fw2.write("Czarkę\n");
+    fw2.write("Clarke\n");
+    fw2.write("Clarkiem\n");
+    fw2.write("Clarkom\n");
+    
+    fw2.close();
+
+    File dictFile = new File("/tmp/morfologik.dict");
+    String[] buildToolOptions =
+            {"-i", inputFile.getAbsolutePath(), "-o", dictFile.getAbsolutePath()};
+    FSABuildTool.main(buildToolOptions);
+    Dictionary dictionary = Dictionary.read(dictFile);
+    Speller speller = new Speller(dictionary, 3);*/
+    
+    final URL url = getClass().getResource("reps_dist2.dict");
+    final Speller speller = new Speller(Dictionary.read(url), 3);
+    
+    List<String> reps = speller.findReplacements("Rytmus");
+    assertTrue(reps.get(0).equals("Rhythmus"));
+    assertTrue(reps.get(1).equals("Mitmuss"));
+    reps = speller.findReplacements("Walt");
+    assertTrue(reps.get(0).equals("Wald"));
+    assertTrue(reps.get(1).equals("Band"));
+    reps = speller.findReplacements("yout");
+    assertTrue(reps.get(0).equals("youd"));
+    assertTrue(reps.get(1).equals("ijond"));
+    assertTrue(reps.get(2).equals("ijo"));
+    reps = speller.findReplacements("yousut");
+    assertTrue(reps.get(0).equals("ijoussud"));
+    assertTrue(reps.get(1).equals("ijousod"));
+    assertTrue(reps.get(2).equals("ijoussuud"));
+    assertTrue(reps.get(3).equals("youd"));
+    reps = speller.findReplacements("yo");
+    assertTrue(reps.get(0).equals("ijo"));
+    assertTrue(reps.get(1).equals("ij"));
+    reps = speller.findReplacements("Clarkem");
+    assertTrue(reps.get(0).equals("Ciarkę"));
+    assertTrue(reps.get(1).equals("Clarke"));
+    assertTrue(reps.get(2).equals("Clarkiem"));
+    assertTrue(reps.get(3).equals("Clarkom"));
+    assertTrue(reps.get(4).equals("Czarkę"));
+  }
+
   private int getCutOffDistance(final Speller spell, final String word, final String candidate) {
     // assuming there is no pair-replacement 
     spell.setWordAndCandidate(word, candidate);
     final int [] ced = new int[spell.getCandLen() - spell.getWordLen()];
     for (int i = 0; i < spell.getCandLen() - spell.getWordLen(); i++) {
-      
       ced[i] = spell.cuted(spell.getWordLen() + i, spell.getWordLen() + i, spell.getWordLen() + i);
     }
     Arrays.sort(ced);
