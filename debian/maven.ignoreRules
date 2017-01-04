@@ -3,6 +3,7 @@ com.carrotsearch junit-benchmarks * * * *
 com.carrotsearch.randomizedtesting randomizedtesting-runner * * * *
 com.google.guava guava * * * *
 com.pyx4me proguard-maven-plugin * * * *
+de.thetaphi forbiddenapis * * * *
 junit junit * * * *
 net.sf.proguard proguard * * * *
 org.apache.maven.plugins maven-eclipse-plugin * * * *
