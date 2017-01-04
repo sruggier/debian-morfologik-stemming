@@ -1,15 +1,9 @@
 
-com.carrotsearch junit-benchmarks * * * *
 com.carrotsearch.randomizedtesting randomizedtesting-runner * * * *
 com.carrotsearch.randomizedtesting junit4-maven-plugin * * * *
-com.google.guava guava * * * *
-com.pyx4me proguard-maven-plugin * * * *
 de.thetaphi forbiddenapis * * * *
 junit junit * * * *
-net.sf.proguard proguard * * * *
-org.apache.maven.plugins maven-eclipse-plugin * * * *
 org.apache.maven.plugins maven-enforcer-plugin * * * *
 org.apache.maven.plugins maven-gpg-plugin * * * *
 org.assertj assertj-core * * * *
 org.carrot2 morfologik-tools * * * *
-org.easytesting fest-assert-core * * * *
