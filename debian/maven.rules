@@ -3,4 +3,5 @@ com.beust jcommander jar s/1\..*/1.x/ * *
 com.carrotsearch hppc jar s/.*/debian/ * *
 com.carrotsearch.randomizedtesting * * s/.*/debian/ * *
 junit junit jar s/4\..*/4.x/ * *
+org.apache.felix maven-bundle-plugin * s/3\.0\.0/2.5.4/ * *
 org.carrot2 morfologik-* * s/.*/debian/ * *
