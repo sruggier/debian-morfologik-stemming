@@ -1,3 +1,20 @@
+morfologik-stemming (2.1.2-0.1) UNRELEASED; urgency=medium
+
+  * Imported Upstream version 2.1.2
+  * Remove version mangling from uscan rule
+  * Update pom file list
+  * Update build dependency list
+  * Remove the patch, allowing a dependency on Maven 3
+  * Ignore forbiddenapis dependency
+  * Ignore development tool and testing related dependencies
+  * Update publishedRules via mh_make
+  * Add rule for jcommander dependency
+  * Remove rules for dependences that upstream has removed
+  * Remove --no-parent from parent pom
+  * Add a maven-bundle-plugin version replacement from 3.0.0 to 2.5.4
+
+ -- Simon Ruggier <simon@platform.sh>  Wed, 04 Jan 2017 16:36:17 -0500
+
 morfologik-stemming (1.9.0+dfsg-0.1) unstable; urgency=medium
 
   * Non-maintainer upload.
