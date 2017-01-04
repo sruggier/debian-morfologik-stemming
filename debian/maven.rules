@@ -1,4 +1,5 @@
 
+com.beust jcommander jar s/1\..*/1.x/ * *
 com.carrotsearch hppc jar s/.*/debian/ * *
 com.carrotsearch.randomizedtesting * * s/.*/debian/ * *
 com.google.guava guava bundle s/.*/debian/ * *
