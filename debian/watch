@@ -1,3 +1,2 @@
 version=3
-opts=dversionmangle=s/\+dfsg.*$// \
-    https://github.com/morfologik/morfologik-stemming/releases .*/archive/(.*)\.tar\.gz
+https://github.com/morfologik/morfologik-stemming/releases .*/archive/(.*)\.tar\.gz
