@@ -3,9 +3,11 @@ package morfologik.stemming;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Arrays;
 
 /**
  * Attributes applying to {@link Dictionary} and {@link DictionaryMetadata}.
@@ -137,7 +139,11 @@ public enum DictionaryAttribute {
   ENCODER("fsa.dict.encoder") {
     @Override
     public EncoderType fromString(String value) {
-      return EncoderType.valueOf(value.toUpperCase(Locale.ROOT));
+      try {
+        return EncoderType.valueOf(value.trim().toUpperCase(Locale.ROOT));
+      } catch (IllegalArgumentException e) {
+        throw new IllegalArgumentException("Invalid encoder name '" + value.trim() + "', only these coders are valid: " + Arrays.toString(EncoderType.values()));
+      }
     }
   },
 
@@ -147,8 +153,8 @@ public enum DictionaryAttribute {
    */
   INPUT_CONVERSION("fsa.dict.input-conversion") {
     @Override
-    public Map<String, String> fromString(String value) throws IllegalArgumentException {
-      Map<String, String> conversionPairs = new HashMap<String, String>();
+    public LinkedHashMap<String, String> fromString(String value) throws IllegalArgumentException {
+      LinkedHashMap<String, String> conversionPairs = new LinkedHashMap<>();
       final String[] replacements = value.split(",\\s*");
       for (final String stringPair : replacements) {
         final String[] twoStrings = stringPair.trim().split(" ");
@@ -177,8 +183,8 @@ public enum DictionaryAttribute {
    */
   OUTPUT_CONVERSION ("fsa.dict.output-conversion") {
     @Override
-    public Map<String, String> fromString(String value) throws IllegalArgumentException {
-      Map<String, String> conversionPairs = new HashMap<String, String>();
+    public LinkedHashMap<String, String> fromString(String value) throws IllegalArgumentException {
+      LinkedHashMap<String, String> conversionPairs = new LinkedHashMap<String, String>();
       final String[] replacements = value.split(",\\s*");
       for (final String stringPair : replacements) {
         final String[] twoStrings = stringPair.trim().split(" ");
@@ -206,8 +212,8 @@ public enum DictionaryAttribute {
    */
   REPLACEMENT_PAIRS("fsa.dict.speller.replacement-pairs") {
     @Override
-    public Map<String, List<String>> fromString(String value) throws IllegalArgumentException {
-      Map<String, List<String>> replacementPairs = new HashMap<String, List<String>>();
+    public LinkedHashMap<String, List<String>> fromString(String value) throws IllegalArgumentException {
+      LinkedHashMap<String, List<String>> replacementPairs = new LinkedHashMap<>();
       final String[] replacements = value.split(",\\s*");
       for (final String stringPair : replacements) {
         final String[] twoStrings = stringPair.trim().split(" ");
@@ -236,9 +242,8 @@ public enum DictionaryAttribute {
    */
   EQUIVALENT_CHARS("fsa.dict.speller.equivalent-chars") {
     @Override
-    public Map<Character, List<Character>> fromString(String value) throws IllegalArgumentException {
-      Map<Character, List<Character>> equivalentCharacters =
-          new HashMap<Character, List<Character>>();
+    public LinkedHashMap<Character, List<Character>> fromString(String value) throws IllegalArgumentException {
+      LinkedHashMap<Character, List<Character>> equivalentCharacters = new LinkedHashMap<>();
       final String[] eqChars = value.split(",\\s*");
       for (final String characterPair : eqChars) {
         final String[] twoChars = characterPair.trim().split(" ");
@@ -282,7 +287,10 @@ public enum DictionaryAttribute {
   public final String propertyName;
 
   /**
-   * Converts a string to the given attribute's value (covariants used).
+   * Converts a string to the given attribute's value.
+
+   * @param value The value to convert to an attribute value. 
+   * @return Returns the attribute's value converted from a string.
    * 
    * @throws IllegalArgumentException
    *             If the input string cannot be converted to the attribute's
@@ -293,7 +301,9 @@ public enum DictionaryAttribute {
   }
 
   /**
-   * Return an {@link DictionaryAttribute} by its {@link #propertyName}.
+   * @param propertyName The property of a {@link DictionaryAttribute}.
+   * @return Return a {@link DictionaryAttribute} associated with
+   * a given {@link #propertyName}. 
    */
   public static DictionaryAttribute fromPropertyName(String propertyName) {
     DictionaryAttribute value = attrsByPropertyName.get(propertyName);
@@ -321,7 +331,7 @@ public enum DictionaryAttribute {
   }
 
   private static Boolean booleanValue(String value) {
-    value = value.toLowerCase();
+    value = value.toLowerCase(Locale.ROOT);
     if ("true".equals(value) || "yes".equals(value) || "on".equals(value)) {
       return Boolean.TRUE;
     }

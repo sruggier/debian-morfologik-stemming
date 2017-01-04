@@ -5,24 +5,25 @@ import java.nio.ByteBuffer;
 import java.nio.CharBuffer;
 import java.nio.charset.*;
 
-import morfologik.util.BufferUtils;
-
 /**
  * Stem and tag data associated with a given word.
  * 
- * <p>
- * <b>Important notes:</b>
- * <ul>
- * <li>Objects of this class are <i>volatile</i> (their content changes on
- * subsequent calls to {@link DictionaryLookup} class. If you need a copy of the
+ * Instances of this class are reused and mutable (values
+ * returned from {@link #getStem()}, {@link #getWord()}
+ * and other related methods change on subsequent calls to 
+ * {@link DictionaryLookup} class that returned a given
+ * instance of {@link WordData}.
+ * 
+ * If you need a copy of the
  * stem or tag data for a given word, you have to create a custom buffer
  * yourself and copy the associated data, perform {@link #clone()} or create
  * strings (they are immutable) using {@link #getStem()} and then
- * {@link CharSequence#toString()}.</li>
- * <li>Objects of this class must not be used in any Java collections. In fact
- * both equals and hashCode methods are overridden and throw exceptions to
- * prevent accidental damage.</li>
- * </ul>
+ * {@link CharSequence#toString()}.
+ * 
+ * For reasons above it makes no sense to use instances
+ * of this class in associative containers or lists. In fact,
+ * both {@link #equals(Object)} and {@link #hashCode()} are overridden and throw 
+ * exceptions to prevent accidental damage.
  */
 public final class WordData implements Cloneable {
 	/**
@@ -37,7 +38,7 @@ public final class WordData implements Cloneable {
 	/**
 	 * Inflected word form data.
 	 */
-	CharSequence wordCharSequence;
+	private CharSequence wordCharSequence;
 
 	/**
 	 * Character sequence after converting {@link #stemBuffer} using
@@ -90,8 +91,11 @@ public final class WordData implements Cloneable {
 
 	/**
 	 * Copy the stem's binary data (no charset decoding) to a custom byte
-	 * buffer. If the buffer is null or not large enough to hold the result, a
-	 * new buffer is allocated.
+	 * buffer.
+	 *
+	 * The buffer is cleared prior to copying and flipped for reading
+	 * upon returning from this method. If the buffer is null or not large 
+	 * enough to hold the result, a new buffer is allocated.
 	 * 
 	 * @param target
 	 *            Target byte buffer to copy the stem buffer to or
@@ -100,7 +104,7 @@ public final class WordData implements Cloneable {
 	 * @return Returns <code>target</code> or the new reallocated buffer.
 	 */
 	public ByteBuffer getStemBytes(ByteBuffer target) {
-		target = BufferUtils.ensureCapacity(target, stemBuffer.remaining());
+		target = BufferUtils.clearAndEnsureCapacity(target, stemBuffer.remaining());
 		stemBuffer.mark();
 		target.put(stemBuffer);
 		stemBuffer.reset();
@@ -110,8 +114,10 @@ public final class WordData implements Cloneable {
 
 	/**
 	 * Copy the tag's binary data (no charset decoding) to a custom byte buffer.
-	 * If the buffer is null or not large enough to hold the result, a new
-	 * buffer is allocated.
+	 * 
+   * The buffer is cleared prior to copying and flipped for reading
+   * upon returning from this method. If the buffer is null or not large 
+   * enough to hold the result, a new buffer is allocated.
 	 * 
 	 * @param target
 	 *            Target byte buffer to copy the tag buffer to or
@@ -120,7 +126,7 @@ public final class WordData implements Cloneable {
 	 * @return Returns <code>target</code> or the new reallocated buffer.
 	 */
 	public ByteBuffer getTagBytes(ByteBuffer target) {
-		target = BufferUtils.ensureCapacity(target, tagBuffer.remaining());
+		target = BufferUtils.clearAndEnsureCapacity(target, tagBuffer.remaining());
 		tagBuffer.mark();
 		target.put(tagBuffer);
 		tagBuffer.reset();
@@ -130,8 +136,11 @@ public final class WordData implements Cloneable {
 
 	/**
 	 * Copy the inflected word's binary data (no charset decoding) to a custom
-	 * byte buffer. If the buffer is null or not large enough to hold the
-	 * result, a new buffer is allocated.
+	 * byte buffer.
+	 * 
+   * The buffer is cleared prior to copying and flipped for reading
+   * upon returning from this method. If the buffer is null or not large 
+   * enough to hold the result, a new buffer is allocated. 
 	 * 
 	 * @param target
 	 *            Target byte buffer to copy the word buffer to or
@@ -140,7 +149,7 @@ public final class WordData implements Cloneable {
 	 * @return Returns <code>target</code> or the new reallocated buffer.
 	 */
 	public ByteBuffer getWordBytes(ByteBuffer target) {
-		target = BufferUtils.ensureCapacity(target, wordBuffer.remaining());
+		target = BufferUtils.clearAndEnsureCapacity(target, wordBuffer.remaining());
 		wordBuffer.mark();
 		target.put(wordBuffer);
 		wordBuffer.reset();
@@ -153,7 +162,7 @@ public final class WordData implements Cloneable {
 	 *         <code>null</code> if no associated tag data exists.
 	 */
 	public CharSequence getTag() {
-		tagCharSequence = decode(tagBuffer, tagCharSequence);
+		tagCharSequence = BufferUtils.bytesToChars(decoder, tagBuffer, tagCharSequence);
 		return tagCharSequence.remaining() == 0 ? null : tagCharSequence;
 	}
 
@@ -162,7 +171,7 @@ public final class WordData implements Cloneable {
 	 *         <code>null</code> if no associated stem data exists.
 	 */
 	public CharSequence getStem() {
-		stemCharSequence = decode(stemBuffer, stemCharSequence);
+		stemCharSequence = BufferUtils.bytesToChars(decoder, stemBuffer, stemCharSequence);
 		return stemCharSequence.remaining() == 0 ? null : stemCharSequence;
 	}
 
@@ -203,7 +212,7 @@ public final class WordData implements Cloneable {
 	 * this object. The content of all internal buffers is copied.
 	 */
 	@Override
-	protected WordData clone() {
+	public WordData clone() {
 		final WordData clone = new WordData(this.decoder);
 		clone.wordCharSequence = cloneCharSequence(wordCharSequence);
 		clone.wordBuffer = getWordBytes(null);
@@ -221,34 +230,13 @@ public final class WordData implements Cloneable {
 		return chs.toString();
 	}
 
-	/**
-	 * Reset internal structures for storing another word's data.
-	 */
-	void reset() {
-		this.wordCharSequence = null;
-		this.wordBuffer = null;
-		this.stemCharSequence.clear();
-		this.tagCharSequence.clear();
-		this.stemBuffer.clear();
-		this.tagBuffer.clear();
-	}
+  void update(ByteBuffer wordBuffer, CharSequence word) {
+    this.stemCharSequence.clear();
+    this.tagCharSequence.clear();
+    this.stemBuffer.clear();
+    this.tagBuffer.clear();
 
-	/**
-	 * Decode byte buffer, optionally expanding the char buffer to.
-	 */
-	private CharBuffer decode(ByteBuffer bytes, CharBuffer chars) {
-		chars.clear();
-		final int maxCapacity = (int) (bytes.remaining() * decoder.maxCharsPerByte());
-		if (chars.capacity() <= maxCapacity) {
-			chars = CharBuffer.allocate(maxCapacity);
-		}
-
-		bytes.mark();
-		decoder.reset();
-		decoder.decode(bytes, chars, true);
-		chars.flip();
-		bytes.reset();
-
-		return chars;
-	}
+    this.wordBuffer = wordBuffer;
+    this.wordCharSequence = word;
+  }
 }

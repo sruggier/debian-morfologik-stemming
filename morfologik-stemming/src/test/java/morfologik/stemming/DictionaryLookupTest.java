@@ -1,28 +1,48 @@
 package morfologik.stemming;
 
-import static org.junit.Assert.assertArrayEquals;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
+import static org.assertj.core.api.Assertions.*;
+import static org.junit.Assert.*;
 
 import java.io.IOException;
-import java.io.UnsupportedEncodingException;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 
 import morfologik.fsa.FSA;
-import morfologik.fsa.FSABuilder;
-import morfologik.fsa.FSAUtils;
 
+import org.assertj.core.api.Assertions;
+import org.junit.Assert;
 import org.junit.Test;
 
-/*
- *
- */
 public class DictionaryLookupTest {
-  /* */
+  @Test
+  public void testApplyReplacements() {
+    LinkedHashMap<String, String> conversion = new LinkedHashMap<>();
+    conversion.put("'", "`");
+    conversion.put("fi", "ﬁ");
+    conversion.put("\\a", "ą");
+    conversion.put("Barack", "George");
+    conversion.put("_", "xx");
+    assertEquals("ﬁlut", DictionaryLookup.applyReplacements("filut", conversion));
+    assertEquals("ﬁzdrygałką", DictionaryLookup.applyReplacements("fizdrygałk\\a", conversion));
+    assertEquals("George Bush", DictionaryLookup.applyReplacements("Barack Bush", conversion));
+    assertEquals("xxxxxxxx", DictionaryLookup.applyReplacements("____", conversion));
+  }
+
+  @Test
+  public void testRemovedEncoderProperties() throws IOException {
+    final URL url = this.getClass().getResource("test-removed-props.dict");
+    try {
+      new DictionaryLookup(Dictionary.read(url));
+      Assert.fail();
+    } catch (IOException e) {
+      assertThat(e).hasMessageContaining(
+          DictionaryAttribute.ENCODER.propertyName);
+    }
+  }
+
   @Test
   public void testPrefixDictionaries() throws IOException {
     final URL url = this.getClass().getResource("test-prefix.dict");
@@ -55,15 +75,19 @@ public class DictionaryLookupTest {
     final URL url = this.getClass().getResource("test-infix.dict");
     final IStemmer s = new DictionaryLookup(Dictionary.read(url));
 
-    assertArrayEquals(new String[] { "Rzeczpospolita", "subst:irreg" },
-        stem(s, "Rzeczypospolitej"));
-    assertArrayEquals(new String[] { "Rzeczycki", "adj:pl:nom:m" }, stem(s,
-        "Rzeczyccy"));
-    assertArrayEquals(new String[] { "Rzeczpospolita", "subst:irreg" },
-        stem(s, "Rzecząpospolitą"));
+    Assertions.assertThat(stem(s, "Rzeczypospolitej"))
+      .containsExactly("Rzeczpospolita", "subst:irreg");
+
+    Assertions.assertThat(stem(s, "Rzeczyccy"))
+      .containsExactly("Rzeczycki", "adj:pl:nom:m");
+
+    Assertions.assertThat(stem(s, "Rzecząpospolitą"))
+      .containsExactly("Rzeczpospolita", "subst:irreg");
 
     // This word is not in the dictionary.
     assertNoStemFor(s, "martygalski");
+    
+    // This word uses characters that are outside of the encoding range of the dictionary. 
     assertNoStemFor(s, "Rzeczyckiõh");
   }
 
@@ -79,17 +103,14 @@ public class DictionaryLookupTest {
     }
 
     // Make sure a sample of the entries is present.
-    assertTrue(entries.contains("Rzekunia Rzekuń subst:sg:gen:m"));
-    assertTrue(entries
-        .contains("Rzeczkowskie Rzeczkowski adj:sg:nom.acc.voc:n+adj:pl:acc.nom.voc:f.n"));
-    assertTrue(entries
-        .contains("Rzecząpospolitą Rzeczpospolita subst:irreg"));
-    assertTrue(entries
-        .contains("Rzeczypospolita Rzeczpospolita subst:irreg"));
-    assertTrue(entries
-        .contains("Rzeczypospolitych Rzeczpospolita subst:irreg"));
-    assertTrue(entries
-        .contains("Rzeczyckiej Rzeczycki adj:sg:gen.dat.loc:f"));
+    Assertions.assertThat(entries)
+      .contains(
+          "Rzekunia Rzekuń subst:sg:gen:m",
+          "Rzeczkowskie Rzeczkowski adj:sg:nom.acc.voc:n+adj:pl:acc.nom.voc:f.n",
+          "Rzecząpospolitą Rzeczpospolita subst:irreg",
+          "Rzeczypospolita Rzeczpospolita subst:irreg",
+          "Rzeczypospolitych Rzeczpospolita subst:irreg",
+          "Rzeczyckiej Rzeczycki adj:sg:gen.dat.loc:f");
   }
 
   /* */
@@ -112,7 +133,6 @@ public class DictionaryLookupTest {
       assertEqualSequences(clone.getStem(), wd.getStem());
       assertEqualSequences(clone.getTag(), wd.getTag());
       assertEqualSequences(clone.getWord(), wd.getWord());
-      assertEqualSequences(clone.wordCharSequence, wd.wordCharSequence);
     }
 
     // Check collections contract.
@@ -135,10 +155,6 @@ public class DictionaryLookupTest {
     final URL url = this.getClass().getResource("test-diacritics-utf8.dict");
     Dictionary read = Dictionary.read(url);
     final IStemmer s = new DictionaryLookup(read);
-
-    for (byte[] ba : FSAUtils.rightLanguage(read.fsa, read.fsa.getRootNode())) {
-      System.out.println(new String(ba, "UTF-8"));
-    }
 
     assertArrayEquals(new String[] { "merge", "001" }, stem(s, "mergeam"));
     assertArrayEquals(new String[] { "merge", "002" }, stem(s, "merseserăm"));
@@ -188,16 +204,13 @@ public class DictionaryLookupTest {
   /* */
   @Test
   public void testSeparatorInLookupTerm() throws IOException {
-    FSA fsa = FSABuilder.build(toBytes("iso8859-1", new String [] {
-        "l+A+LW",
-        "l+A+NN1d",
-    }));
+    FSA fsa = FSA.read(getClass().getResourceAsStream("test-separator-in-lookup.fsa"));
 
     DictionaryMetadata metadata = new DictionaryMetadataBuilder()
-    .separator('+')
-    .encoding("iso8859-1")
-    .encoder(EncoderType.INFIX)
-    .build();
+      .separator('+')
+      .encoding("iso8859-1")
+      .encoder(EncoderType.INFIX)
+      .build();
 
     final DictionaryLookup s = new DictionaryLookup(new Dictionary(fsa, metadata));
     assertEquals(0, s.lookup("l+A").size());
@@ -209,18 +222,6 @@ public class DictionaryLookupTest {
     final URL url = this.getClass().getResource("test-separators.dict");
     final DictionaryLookup s = new DictionaryLookup(Dictionary.read(url));
     assertEquals('+', s.getSeparatorChar());
-  }
-
-  private static byte[][] toBytes(String charset, String[] strings) {
-    byte [][] out = new byte [strings.length][];
-    for (int i = 0; i < strings.length; i++) {
-      try {
-        out[i] = strings[i].getBytes(charset);
-      } catch (UnsupportedEncodingException e) {
-        throw new RuntimeException(e);
-      }
-    }
-    return out;
   }
 
   /* */

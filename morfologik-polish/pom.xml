@@ -8,15 +8,19 @@
   <parent>
     <groupId>org.carrot2</groupId>
     <artifactId>morfologik-parent</artifactId>
-    <version>1.9.0</version>
+    <version>2.1.2</version>
     <relativePath>../pom.xml</relativePath>
   </parent>
 
   <artifactId>morfologik-polish</artifactId>
-  <packaging>jar</packaging>
+  <packaging>bundle</packaging>
 
-  <name>Morfologik Stemming Dictionary for Polish</name>
-  <description>Morfologik Stemming Dictionary for Polish.</description>
+  <name>Morfologik Stemming (Polish Dictionary)</name>
+  <description>Morfologik Stemming (Polish Dictionary)</description>
+
+  <properties>
+    <forbiddenapis.signaturefile>../etc/forbidden-apis/signatures.txt</forbiddenapis.signaturefile>
+  </properties>
 
   <dependencies>
     <dependency>
@@ -24,33 +28,18 @@
       <artifactId>morfologik-stemming</artifactId>
       <version>${project.version}</version>
     </dependency>
-
-    <dependency>
-      <groupId>com.carrotsearch</groupId>
-      <artifactId>junit-benchmarks</artifactId>
-      <scope>test</scope>
-    </dependency>
-
-    <dependency>
-      <groupId>junit</groupId>
-      <artifactId>junit</artifactId>
-      <scope>test</scope>
-    </dependency>
   </dependencies>
 
   <build>
-    <defaultGoal>install</defaultGoal>
-
     <plugins>
       <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-jar-plugin</artifactId>
+        <groupId>org.apache.felix</groupId>
+        <artifactId>maven-bundle-plugin</artifactId>
         <configuration>
-          <archive>
-            <manifest>
-              <addClasspath>true</addClasspath>
-            </manifest>
-          </archive>
+          <instructions>
+            <Export-Package>morfologik.stemming.polish</Export-Package>
+            <Import-Package>*</Import-Package>
+          </instructions>
         </configuration>
       </plugin>
     </plugins>

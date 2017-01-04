@@ -1,7 +1,7 @@
 package morfologik.speller;
 
 /**
- * Keeps track of already computed values of edit distance.<br/>
+ * Keeps track of already computed values of edit distance. 
  * Remarks: To save space, the matrix is kept in a vector.
  */
 public class HMatrix {
@@ -41,7 +41,7 @@ public class HMatrix {
 		for (int j = 0; j < 2 * distance + 1; j++) {
 			p[j * rowLength] = distance + 1 - j; // H(i=0..distance+1,0)=i
 			// FIXME: fordistance == 2 we exceed the array size here.
-            // there's a bug in spell.cc, Jan Daciuk has been notified about it.
+      // there's a bug in spell.cc, Jan Daciuk has been notified about it.
 			p[Math.min(p.length - 1, (j + distance + 1) * rowLength + j)] = j; // H(0,j=0..distance+1)=j
 		}
 	}
@@ -53,15 +53,14 @@ public class HMatrix {
 	 *            - (int) row number;
 	 * @param j
 	 *            - (int) column number.
-	 * @return Item H[i][j] <br/>
-	 *         Remarks: H matrix is really simulated. What is needed is only
-	 *         2 * edit_distance + 1 wide band around the diagonal. In fact
+	 * @return Item <code>H[i][j]</code>. Remarks: H matrix is really simulated. What is needed is only
+	 *         <code>2 * edit_distance + 1</code> wide band around the diagonal. In fact
 	 *         this diagonal has been pushed up to the upper border of the
 	 *         matrix.
 	 * 
 	 *         The matrix in the vector looks likes this:
-	 * 
-	 *         <pre>
+
+	 * <pre>
 	 * 	    +---------------------+
 	 * 	0   |#####################| j=i-e-1
 	 * 	1   |                     | j=i-e
@@ -83,6 +82,7 @@ public class HMatrix {
 
 	/**
 	 * Set an item in hMatrix.
+   * No checking for i &amp; j is done. They must be correct.
 	 * 
 	 * @param i
 	 *            - (int) row number;
@@ -90,8 +90,6 @@ public class HMatrix {
 	 *            - (int) column number;
 	 * @param val
 	 *            - (int) value to put there.
-	 * 
-	 *          No checking for i & j is done. They must be correct.
 	 */
 	public void set(final int i, final int j, final int val) {
 		p[(j - i + editDistance + 1) * rowLength + j] = val;
