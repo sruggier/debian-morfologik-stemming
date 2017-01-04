@@ -1,0 +1,93 @@
+
+1.2.2     License switch to plain BSD (removed the patent clause which did not make much sense 
+          anyway).
+
+          The build ZIP now includes licenses for individual JARs (prevents confusion). 
+
+1.2.1     Fixed tool launching routines.
+
+1.2       Package hierarchy reorganized.
+
+          Removed stempel (heuristic stemmer for Polish).
+
+          Code updated to Java 1.5. 
+
+          The API has changed in many places (enums instead of constants, 
+          generics, iterables, removed explicit Arc and Node classes and replaced
+          by int pointers).
+
+          FSA traversal in version 1.2 is implemented on top of primitive
+          data structures (int pointers) to keep memory usage minimal. The speed
+          boost gained from this is enormous and justifies less readable code. We
+          strongly advise to use the provided iterators and helper functions
+          for matching state sequences in the FSA.
+
+          Tools updated. Dumping existing FSAs is much, much faster now.        
+
+          ################################################################
+          WARNING: Incompatible API changes have been made in release 1.2.
+          WARNING: Java 1.5 or later is required from this version on.
+          ################################################################
+
+1.1.4     * Fixed a bug that caused UTF-8 dictionaries to be garbled. Now it should be relatively
+          safe to use UTF-8 dictionaries (note: separators cannot be multibyte UTF-8 characters,
+          yet this is probably a very rare case).
+
+1.1.3     * Fixed a bug causing NPE when the library is called with null context class loader 
+          (happens when JVM is invoked from an JNI-attached thread). Thanks to
+          Patrick Luby for report and detailed analysis.
+
+          Updated the built-in dictionary to the newest version available. 
+
+1.1.2     * Fixed a bug causing JAR file locking (by implementing a workaround).
+
+          Fixed the build script (manifest file was broken).
+
+1.1.1     Distribution script fixes. The final JAR does not contain test classes and resources. Size
+          trimmed almost twice compared to release 1.1.
+
+          Updated the dump tool to accept dictionary metadata files.
+
+1.1       Introduced an auxiliary "meta" information files about compressed dictionaries.
+          Such information include delimiter symbol, encoding and infix/prefix/postfix
+          decoding info.
+          
+          The API has changed (repackaging). Some deprecated methods have been removed.
+          This is a major redesign/ upgrade, you will have to adjust your source code.
+          
+          Cleaned up APIs and interfaces.
+
+          Added infrastructure for command-line tool launching.
+
+          Cleaned up tests.
+
+          Changed project name to morfologik-stemmers and ownership to (c) Morfologik.
+
+1.0.7     Removed one bug in fsa 'compression' decoding.
+
+1.0.6     Customized version of stempel replaced with a standard distribution.
+
+          Removed deprecated methods and classes.
+          
+          Added infix and prefix encoding support for fsa dictionaries.
+
+1.0.5     Added filler and separator char dumps to FSADump.
+          
+          * A major bug in automaton traversal corrected. Upgrade when possible.
+          
+          Certain API changes were introduced; older methods are now deprecated
+          and will be removed in the future.
+
+1.0.4     Licenses for full and no-dict versions.
+
+1.0.3     Project code moved to SourceForge (subproject of Morfologik).
+          LICENSE CHANGED FROM PUBLIC DOMAIN TO BSD (doesn't change much, but clarifies
+          legal issues).
+
+1.0.2     Added a Lametyzator constructor which allows custom dictionary stream, field
+          delimiters and encoding. Added an option for building stand-alone 
+          JAR that does not include the default polish dictionary.
+
+1.0.1     Code cleanups. Added a method that returns the third automaton's column (form).
+
+1.0       Initial release
