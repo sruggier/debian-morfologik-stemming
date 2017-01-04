@@ -25,7 +25,7 @@
 #   --site-xml=<location>: Optional, the location for site.xml if it needs to be installed.
 #     Empty by default. [mh_install]
 #
-pom.xml --no-parent --has-package-version
+pom.xml --has-package-version
 morfologik-fsa/pom.xml --has-package-version
 morfologik-fsa-builders/pom.xml --has-package-version
 morfologik-stemming/pom.xml --has-package-version
