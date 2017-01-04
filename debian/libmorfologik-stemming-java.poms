@@ -27,8 +27,8 @@
 #
 pom.xml --no-parent --has-package-version
 morfologik-fsa/pom.xml --has-package-version
+morfologik-fsa-builders/pom.xml --has-package-version
 morfologik-stemming/pom.xml --has-package-version
 morfologik-polish/pom.xml --has-package-version
 morfologik-tools/pom.xml --has-package-version
-morfologik-distribution/pom.xml --has-package-version
 morfologik-speller/pom.xml --has-package-version
